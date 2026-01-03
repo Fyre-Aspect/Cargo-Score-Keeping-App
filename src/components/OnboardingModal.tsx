@@ -29,7 +29,7 @@ export function OnboardingModal({ visible, onClose }: OnboardingModalProps) {
           <Text style={styles.subtitle}>A simple way to track card game scores</Text>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📊 Scoring</Text>
+            <Text style={styles.sectionTitle}>Scoring</Text>
             <Text style={styles.sectionText}>
               • Lower score is better — the player with the least points wins
             </Text>
@@ -45,7 +45,7 @@ export function OnboardingModal({ visible, onClose }: OnboardingModalProps) {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🔄 Fast Scoring</Text>
+            <Text style={styles.sectionTitle}>Fast Scoring</Text>
             <Text style={styles.sectionText}>
               • When you tap +/− quickly, scores accumulate
             </Text>
@@ -58,7 +58,7 @@ export function OnboardingModal({ visible, onClose }: OnboardingModalProps) {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🎴 Dealer Tracking</Text>
+            <Text style={styles.sectionTitle}>Dealer Tracking</Text>
             <Text style={styles.sectionText}>
               • The current dealer is marked with a <Text style={styles.dealerBadge}>D</Text> badge
             </Text>
@@ -71,12 +71,12 @@ export function OnboardingModal({ visible, onClose }: OnboardingModalProps) {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🎮 Game Controls</Text>
+            <Text style={styles.sectionTitle}>Game Controls</Text>
             <Text style={styles.sectionText}>
               • Tap the <Text style={styles.highlight}>+</Text> button to add players
             </Text>
             <Text style={styles.sectionText}>
-              • "New Game" resets all scores but keeps players
+              • "Reset Game" removes all players and resets scores
             </Text>
           </View>
         </ScrollView>

@@ -20,19 +20,19 @@ export function Header() {
     dispatch({ type: 'NEXT_DEALER' });
   };
 
-  const handleNewGame = () => {
+  const handleResetGame = () => {
     if (state.players.length === 0) {
       return;
     }
     Alert.alert(
-      'Reset All Scores?',
-      'Are you sure you want to reset all scores to 0? Players and dealer will be kept.',
+      'Reset Game?',
+      'This will remove all players and reset scores. Are you sure?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset Scores',
+          text: 'Reset Game',
           style: 'destructive',
-          onPress: () => dispatch({ type: 'RESET_SCORES' }),
+          onPress: () => dispatch({ type: 'RESET_GAME' }),
         },
       ]
     );
@@ -73,12 +73,12 @@ export function Header() {
 
         <TouchableOpacity
           style={[styles.actionButton, styles.resetButton, playerCount === 0 && styles.actionButtonDisabled]}
-          onPress={handleNewGame}
+          onPress={handleResetGame}
           activeOpacity={0.7}
           disabled={playerCount === 0}
         >
           <Text style={[styles.actionButtonText, playerCount === 0 && styles.actionButtonTextDisabled]}>
-            New Game
+            Reset Game
           </Text>
         </TouchableOpacity>
       </View>

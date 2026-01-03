@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GameState, GameAction, Player, STORAGE_KEY, ONBOARDING_KEY } from '../types';
+import { GameState, GameAction, Player, STORAGE_KEY } from '../types';
 import { generateId, sortPlayersByScore, getNextDealerSeat } from '../utils/helpers';
 
 /**
@@ -147,6 +147,17 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case 'RESET_GAME': {
+      return {
+        ...state,
+        players: [],
+        dealerSeatIndex: 0,
+        expandedPlayerId: null,
+        pendingScores: {},
+        isGameStarted: false,
+      };
+    }
+
     case 'EXPAND_PLAYER': {
       return {
         ...state,
@@ -253,7 +264,7 @@ export function GameProvider({ children }: GameProviderProps) {
 
     const saveState = async () => {
       try {
-        // Don't persist expandedPlayerId or pendingScores - those are UI state
+        // Don't persist expandedPlayerId or pendingScores - those are transient UI state
         const stateToSave: GameState = {
           ...state,
           expandedPlayerId: null,

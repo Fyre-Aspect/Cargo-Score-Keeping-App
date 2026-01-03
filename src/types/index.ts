@@ -36,6 +36,7 @@ export type GameAction =
   | { type: 'SET_SCORE'; playerId: string; score: number }
   | { type: 'NEXT_DEALER' }
   | { type: 'RESET_SCORES' }
+  | { type: 'RESET_GAME' }
   | { type: 'EXPAND_PLAYER'; playerId: string | null }
   | { type: 'LOAD_STATE'; state: GameState }
   | { type: 'SET_ONBOARDING_SEEN' }

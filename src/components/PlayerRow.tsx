@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,14 @@ interface PlayerRowProps {
 function PlayerRowComponent({ player, rank, isExpanded, pendingDelta }: PlayerRowProps) {
   const { dispatch, addPendingScore } = useGame();
   const isDealer = useIsDealer(player.id);
+  const scoreScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(scoreScale, { toValue: 1.08, duration: 90, useNativeDriver: true }),
+      Animated.timing(scoreScale, { toValue: 1, duration: 120, useNativeDriver: true }),
+    ]).start();
+  }, [player.score, scoreScale]);
 
   const handleQuickIncrement = () => {
     addPendingScore(player.id, 1);
@@ -83,9 +91,15 @@ function PlayerRowComponent({ player, rank, isExpanded, pendingDelta }: PlayerRo
 
         {/* Score display */}
         <View style={styles.scoreContainer}>
-          <Text style={[styles.scoreText, isLeading && styles.scoreTextLeading]}>
+          <Animated.Text
+            style={[
+              styles.scoreText,
+              isLeading && styles.scoreTextLeading,
+              { transform: [{ scale: scoreScale }] },
+            ]}
+          >
             {formatScore(player.score)}
-          </Text>
+          </Animated.Text>
           {hasPending && (
             <Text style={styles.pendingPreview}>
               → {formatScore(player.score + pendingDelta)}
