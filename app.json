@@ -1,8 +1,8 @@
 {
+  "cli": {
+    "appVersionSource": "remote"
+  },
   "expo": {
-    "cli": {
-      "appVersionSource": "remote"
-    },
     "name": "Score Keeper",
     "slug": "cargo-score-keeper",
     "version": "1.0.0",
