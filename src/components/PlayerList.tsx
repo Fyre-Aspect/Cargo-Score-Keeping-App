@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   FlatList,
@@ -20,28 +20,44 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 export function PlayerList() {
   const { state } = useGame();
+  const prevPlayersRef = useRef<string>('');
 
-  // Configure layout animation for smooth reordering
+  // Configure layout animation for smooth reordering (sliding effect)
   const configureAnimation = () => {
     LayoutAnimation.configureNext({
-      duration: 200,
-      update: {
+      duration: 300,
+      create: {
         type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+      update: {
+        type: LayoutAnimation.Types.spring,
+        springDamping: 0.85,
+      },
+      delete: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
       },
     });
   };
 
-  // Trigger animation when players array changes
-  React.useEffect(() => {
-    configureAnimation();
+  // Trigger animation when player order changes
+  useEffect(() => {
+    const currentOrder = state.players.map(p => p.id).join(',');
+    if (prevPlayersRef.current && prevPlayersRef.current !== currentOrder) {
+      configureAnimation();
+    }
+    prevPlayersRef.current = currentOrder;
   }, [state.players]);
 
   const renderPlayer = ({ item, index }: { item: Player; index: number }) => {
+    const pendingDelta = state.pendingScores[item.id] || 0;
     return (
       <PlayerRow
         player={item}
         rank={index + 1}
         isExpanded={state.expandedPlayerId === item.id}
+        pendingDelta={pendingDelta}
       />
     );
   };
@@ -74,6 +90,8 @@ export function PlayerList() {
       // Keyboard behavior
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
+      // Extra data to trigger re-render when pending scores change
+      extraData={state.pendingScores}
     />
   );
 }

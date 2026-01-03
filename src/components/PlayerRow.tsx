@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Pressable,
+  Animated,
 } from 'react-native';
 import { Colors, Spacing, FontSize, BorderRadius, TouchTarget } from '../constants/theme';
 import { Player } from '../types';
@@ -16,18 +17,19 @@ interface PlayerRowProps {
   player: Player;
   rank: number;
   isExpanded: boolean;
+  pendingDelta: number;
 }
 
-function PlayerRowComponent({ player, rank, isExpanded }: PlayerRowProps) {
-  const { dispatch } = useGame();
+function PlayerRowComponent({ player, rank, isExpanded, pendingDelta }: PlayerRowProps) {
+  const { dispatch, addPendingScore } = useGame();
   const isDealer = useIsDealer(player.id);
 
   const handleQuickIncrement = () => {
-    dispatch({ type: 'UPDATE_SCORE', playerId: player.id, delta: 1 });
+    addPendingScore(player.id, 1);
   };
 
   const handleQuickDecrement = () => {
-    dispatch({ type: 'UPDATE_SCORE', playerId: player.id, delta: -1 });
+    addPendingScore(player.id, -1);
   };
 
   const handleExpandPanel = () => {
@@ -39,17 +41,26 @@ function PlayerRowComponent({ player, rank, isExpanded }: PlayerRowProps) {
   };
 
   const isLeading = rank === 1;
+  const hasPending = pendingDelta !== 0;
 
   return (
     <View style={styles.container}>
       {/* Main row */}
       <View style={styles.row}>
-        {/* Rank badge */}
-        <View style={[styles.rankBadge, isLeading && styles.rankBadgeLeading]}>
-          <Text style={[styles.rankText, isLeading && styles.rankTextLeading]}>
-            {rank}
-          </Text>
-        </View>
+        {/* Pending score indicator OR Rank badge */}
+        {hasPending ? (
+          <View style={[styles.pendingBadge, pendingDelta > 0 ? styles.pendingPositive : styles.pendingNegative]}>
+            <Text style={[styles.pendingText, pendingDelta > 0 ? styles.pendingTextPositive : styles.pendingTextNegative]}>
+              {pendingDelta > 0 ? '+' : ''}{pendingDelta}
+            </Text>
+          </View>
+        ) : (
+          <View style={[styles.rankBadge, isLeading && styles.rankBadgeLeading]}>
+            <Text style={[styles.rankText, isLeading && styles.rankTextLeading]}>
+              {rank}
+            </Text>
+          </View>
+        )}
 
         {/* Player info - tappable area for score panel */}
         <Pressable
@@ -75,6 +86,11 @@ function PlayerRowComponent({ player, rank, isExpanded }: PlayerRowProps) {
           <Text style={[styles.scoreText, isLeading && styles.scoreTextLeading]}>
             {formatScore(player.score)}
           </Text>
+          {hasPending && (
+            <Text style={styles.pendingPreview}>
+              → {formatScore(player.score + pendingDelta)}
+            </Text>
+          )}
         </View>
 
         {/* Quick +/- buttons */}
@@ -199,6 +215,36 @@ const styles = StyleSheet.create({
   },
   scoreTextLeading: {
     color: Colors.rankFirst,
+  },
+  pendingPreview: {
+    fontSize: FontSize.xs,
+    color: Colors.accent,
+    marginTop: 2,
+  },
+  pendingBadge: {
+    minWidth: 36,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+    paddingHorizontal: Spacing.xs,
+  },
+  pendingPositive: {
+    backgroundColor: '#D1FAE5',
+  },
+  pendingNegative: {
+    backgroundColor: '#FEE2E2',
+  },
+  pendingText: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+  },
+  pendingTextPositive: {
+    color: '#059669',
+  },
+  pendingTextNegative: {
+    color: '#DC2626',
   },
   quickButtons: {
     flexDirection: 'row',

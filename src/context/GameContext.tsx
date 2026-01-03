@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GameState, GameAction, Player, STORAGE_KEY } from '../types';
+import { GameState, GameAction, Player, STORAGE_KEY, ONBOARDING_KEY } from '../types';
 import { generateId, sortPlayersByScore, getNextDealerSeat } from '../utils/helpers';
 
 /**
@@ -10,6 +10,9 @@ const initialState: GameState = {
   players: [],
   dealerSeatIndex: 0,
   expandedPlayerId: null,
+  pendingScores: {},
+  hasSeenOnboarding: false,
+  isGameStarted: false,
 };
 
 /**
@@ -30,6 +33,19 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case 'ADD_PLAYERS_BATCH': {
+      const newPlayers = action.names.map((name, index) => ({
+        id: generateId(),
+        name: name.trim() || `Player ${state.players.length + index + 1}`,
+        score: 0,
+        seatIndex: state.players.length + index,
+      }));
+      return {
+        ...state,
+        players: sortPlayersByScore([...state.players, ...newPlayers]),
+      };
+    }
+
     case 'REMOVE_PLAYER': {
       const remainingPlayers = state.players.filter(p => p.id !== action.playerId);
       // Reassign seat indices to maintain continuous order
@@ -44,11 +60,14 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       } else if (newDealerSeat >= reindexedPlayers.length) {
         newDealerSeat = reindexedPlayers.length - 1;
       }
+      // Remove pending score for this player
+      const { [action.playerId]: removed, ...remainingPending } = state.pendingScores;
       return {
         ...state,
         players: sortPlayersByScore(reindexedPlayers),
         dealerSeatIndex: newDealerSeat,
         expandedPlayerId: state.expandedPlayerId === action.playerId ? null : state.expandedPlayerId,
+        pendingScores: remainingPending,
       };
     }
 
@@ -58,6 +77,35 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         players: state.players.map(p =>
           p.id === action.playerId ? { ...p, name: action.name.trim() || p.name } : p
         ),
+      };
+    }
+
+    case 'ADD_PENDING_SCORE': {
+      const currentPending = state.pendingScores[action.playerId] || 0;
+      return {
+        ...state,
+        pendingScores: {
+          ...state.pendingScores,
+          [action.playerId]: currentPending + action.delta,
+        },
+      };
+    }
+
+    case 'COMMIT_PENDING_SCORE': {
+      const pendingDelta = state.pendingScores[action.playerId];
+      if (pendingDelta === undefined || pendingDelta === 0) {
+        // Nothing to commit, just clear
+        const { [action.playerId]: removed, ...rest } = state.pendingScores;
+        return { ...state, pendingScores: rest };
+      }
+      const updatedPlayers = state.players.map(p =>
+        p.id === action.playerId ? { ...p, score: p.score + pendingDelta } : p
+      );
+      const { [action.playerId]: removed, ...remainingPending } = state.pendingScores;
+      return {
+        ...state,
+        players: sortPlayersByScore(updatedPlayers),
+        pendingScores: remainingPending,
       };
     }
 
@@ -94,6 +142,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         players: state.players.map(p => ({ ...p, score: 0 })),
+        pendingScores: {},
         expandedPlayerId: null,
       };
     }
@@ -109,6 +158,23 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...action.state,
         players: sortPlayersByScore(action.state.players),
+        pendingScores: action.state.pendingScores || {},
+        hasSeenOnboarding: action.state.hasSeenOnboarding || false,
+        isGameStarted: action.state.isGameStarted || false,
+      };
+    }
+
+    case 'SET_ONBOARDING_SEEN': {
+      return {
+        ...state,
+        hasSeenOnboarding: true,
+      };
+    }
+
+    case 'START_GAME': {
+      return {
+        ...state,
+        isGameStarted: true,
       };
     }
 
@@ -124,9 +190,13 @@ interface GameContextType {
   state: GameState;
   dispatch: React.Dispatch<GameAction>;
   isLoading: boolean;
+  addPendingScore: (playerId: string, delta: number) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
+
+// Store for pending score commit timeouts (outside component to persist across renders)
+const pendingTimeouts: Record<string, ReturnType<typeof setTimeout>> = {};
 
 /**
  * Provider component for game state
@@ -138,6 +208,23 @@ interface GameProviderProps {
 export function GameProvider({ children }: GameProviderProps) {
   const [state, dispatch] = useReducer(gameReducer, initialState);
   const [isLoading, setIsLoading] = React.useState(true);
+
+  // Function to add a pending score with auto-commit after delay
+  const addPendingScore = useCallback((playerId: string, delta: number) => {
+    // Clear existing timeout for this player
+    if (pendingTimeouts[playerId]) {
+      clearTimeout(pendingTimeouts[playerId]);
+    }
+
+    // Add to pending score
+    dispatch({ type: 'ADD_PENDING_SCORE', playerId, delta });
+
+    // Set new timeout to commit after 1.2 seconds of inactivity
+    pendingTimeouts[playerId] = setTimeout(() => {
+      dispatch({ type: 'COMMIT_PENDING_SCORE', playerId });
+      delete pendingTimeouts[playerId];
+    }, 1200);
+  }, []);
 
   // Load state from storage on mount
   useEffect(() => {
@@ -166,10 +253,11 @@ export function GameProvider({ children }: GameProviderProps) {
 
     const saveState = async () => {
       try {
-        // Don't persist expandedPlayerId - that's UI state
+        // Don't persist expandedPlayerId or pendingScores - those are UI state
         const stateToSave: GameState = {
           ...state,
           expandedPlayerId: null,
+          pendingScores: {},
         };
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
       } catch (error) {
@@ -181,7 +269,7 @@ export function GameProvider({ children }: GameProviderProps) {
     return () => clearTimeout(timeoutId);
   }, [state, isLoading]);
 
-  const value = React.useMemo(() => ({ state, dispatch, isLoading }), [state, isLoading]);
+  const value = React.useMemo(() => ({ state, dispatch, isLoading, addPendingScore }), [state, isLoading, addPendingScore]);
 
   return (
     <GameContext.Provider value={value}>

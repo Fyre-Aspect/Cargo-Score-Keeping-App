@@ -25,8 +25,8 @@ export function Header() {
       return;
     }
     Alert.alert(
-      'Start New Game',
-      'This will reset all scores to 0. Players will be kept.',
+      'Reset All Scores?',
+      'Are you sure you want to reset all scores to 0? Players and dealer will be kept.',
       [
         { text: 'Cancel', style: 'cancel' },
         {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
@@ -8,12 +8,45 @@ import {
   Text,
 } from 'react-native';
 import { GameProvider, useGame } from './src/context/GameContext';
-import { Header, PlayerList, AddPlayerModal, AddPlayerFAB } from './src/components';
+import { 
+  Header, 
+  PlayerList, 
+  AddPlayerModal, 
+  AddPlayerFAB,
+  OnboardingModal,
+  GameSetupModal,
+} from './src/components';
 import { Colors } from './src/constants/theme';
 
 function MainScreen() {
-  const { isLoading } = useGame();
+  const { state, dispatch, isLoading } = useGame();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showGameSetup, setShowGameSetup] = useState(false);
+
+  // Show onboarding on first launch, then game setup if no game started
+  useEffect(() => {
+    if (!isLoading) {
+      if (!state.hasSeenOnboarding) {
+        setShowOnboarding(true);
+      } else if (!state.isGameStarted && state.players.length === 0) {
+        setShowGameSetup(true);
+      }
+    }
+  }, [isLoading, state.hasSeenOnboarding, state.isGameStarted, state.players.length]);
+
+  const handleOnboardingClose = () => {
+    dispatch({ type: 'SET_ONBOARDING_SEEN' });
+    setShowOnboarding(false);
+    // Show game setup after onboarding if no game started
+    if (!state.isGameStarted && state.players.length === 0) {
+      setShowGameSetup(true);
+    }
+  };
+
+  const handleGameSetupComplete = () => {
+    setShowGameSetup(false);
+  };
 
   if (isLoading) {
     return (
@@ -32,6 +65,14 @@ function MainScreen() {
       <AddPlayerModal
         visible={showAddModal}
         onClose={() => setShowAddModal(false)}
+      />
+      <OnboardingModal
+        visible={showOnboarding}
+        onClose={handleOnboardingClose}
+      />
+      <GameSetupModal
+        visible={showGameSetup}
+        onComplete={handleGameSetupComplete}
       />
     </View>
   );
